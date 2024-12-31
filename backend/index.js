@@ -10,8 +10,14 @@ app.use(cors());
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:5173",
-        methods: ["GET", "POST"]
+       // Allow both production and development origins
+    origin: [
+        "http://localhost:80",
+        "http://localhost",
+        "http://localhost:5173"  // Keep this for development if needed
+      ],
+      methods: ["GET", "POST"],
+      credentials: true
     }
 });
 
