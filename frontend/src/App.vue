@@ -124,7 +124,26 @@ export default {
       };
     },
     setupSocket() {
-      this.socket = io('http://localhost:3005');
+      this.socket = io('http://localhost:3005', {
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 5,
+    transports: ['websocket', 'polling']
+  });
+
+   // Add connection event handlers
+   this.socket.on('connect', () => {
+    console.log('Connected to server');
+  });
+
+  this.socket.on('connect_error', (error) => {
+    console.error('Connection error:', error);
+  });
+
+  this.socket.on('disconnect', (reason) => {
+    console.log('Disconnected:', reason);
+  });
 
       this.socket.on('game_start', (data) => {
         this.isInGame = true;
