@@ -1,0 +1,23 @@
+## docker-compose.yml
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: card-game-backend
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=production
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: card-game-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

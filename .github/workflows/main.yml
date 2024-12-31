@@ -1,0 +1,73 @@
+## .github/workflows/main.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'
+
+    - name: Install Backend Dependencies
+      working-directory: ./backend
+      run: npm install
+
+    - name: Install Frontend Dependencies
+      working-directory: ./frontend
+      run: npm install
+
+    - name: Run Backend Tests
+      working-directory: ./backend
+      run: npm test
+
+    - name: Run Frontend Tests
+      working-directory: ./frontend
+      run: npm test
+
+    - name: Build Docker Images
+      run: docker-compose build
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build and Push Docker images to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: card-game
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker-compose build
+        docker tag card-game-frontend:latest $ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG
+        docker tag card-game-backend:latest $ECR_REGISTRY/$ECR_REPOSITORY:backend-$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:frontend-$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:backend-$IMAGE_TAG
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          docker-compose down
+          docker-compose pull
+          docker-compose up -d
